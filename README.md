@@ -1,8 +1,14 @@
 # cloud-dl
 
+Please refer to the original GIT for acknowledgments!
+
 Bash script to manage files on owncloud via webdav. cloud-dl allows you to list, upload, download, delete, move, create and share files.
 
-With new functions for automatisation
+Added in this fork: 
+
+* definition of the sharing date limit
+* new function for sharing automatisation via CLI (-S/--share2)
+
 
 ```
 Usage: cloud-dl <options> [file|dir]
