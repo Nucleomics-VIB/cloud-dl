@@ -4,6 +4,23 @@ version="1.7"
 
 conf="$HOME/.cloudconf"
 
+# default expiration in X days
+default_expireInDays=21
+
+expire(){
+# OSX date differs from unix date
+OS="$(uname)"
+case $OS in
+	'Darwin') 
+	expireDate=$(date -v +"${1}"d "+%Y-%m-%d")
+	;;
+	'Linux') 
+	expireDate=$(date "+%Y-%m-%d" -d "+${1} days")
+	;;
+	esac
+echo ${expireDate}
+}
+
 list(){
     dir=$(echo $1 | sed 's/ /%20/g')
     res=$(curl $extra_opts $options -X PROPFIND $dav_url/$dir 2>/dev/null)
@@ -118,6 +135,22 @@ share(){
   echo $url_line
 }
 
+share2(){
+  [ -z "$1" ] && echo "[!] Error. No file specified" && exit
+  [ -z "$2" ] && echo "[!] Error. No password specified" && exit
+  expireInDays=${3:-"${default_expireInDays}"}
+  expireDate=$(expire "${expireInDays}")
+  shr_pwd="--data-urlencode password=$2"
+  res=$(curl $options $ocs_header --data-urlencode "path=$1" --data-urlencode "shareType=3" --data-urlencode expireDate="${expireDate}" $shr_pwd $OCS_SHARE_API/shares 2>/dev/null )
+  [ $? -gt 0 ] && echo "[!] There was an error sharing '$1'" && exit
+  message=$(parse_xml "$res" "message")
+  status=$(parse_xml "$res" "statuscode")
+  [[ "$status" != "200" ]] && echo "[!] Unable to share '$1'. $message" && exit
+  url=$(parse_xml "$res" "url" | sed 's/\&amp;/\&/g')
+  url_line="${url_line}${url}"
+  echo "$1 | $url_line | $2 | shared until ${expireDate}"
+}
+
 unshare(){
     [ -z "$1" ] && echo "[!] Error. No share specified" && exit
     path=$(echo $1 | sed 's/ /%20/g')
@@ -167,6 +200,9 @@ parse_args(){
             -s|--share)     share "$2" "$3" "$4"; exit
             shift
             ;;
+            -S|--share2)     share2 "$2" "$3" "$4"; exit
+            shift
+            ;;
             -U|--unshare)   unshare "$2"
             shift
             ;;
@@ -194,6 +230,7 @@ usage(){
     echo "   -k/--mkdir <dir>                Create new directory"
     echo "   -M/--move <source> <target>     Move file from remote <source> to remote <target> (e.g. --move file.txt somedir/file.txt)"
     echo "   -s/--share <file|dir> [-p] [-q] Create a public share and shows the url. Optionally -p prompts for a password, -q returns only the share URL"
+    echo "   -S/--share2 <file|dir> <password> <days to share> Create a public share with password and returns the url, password, and <sharing end date>"
     echo "   -L/--list-shares                List shares"
     echo "   -U/--unshare <file|dir>         Delete a public share"
     echo "   --configure                     Change connection configuration"
