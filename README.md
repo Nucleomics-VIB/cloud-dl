@@ -20,8 +20,9 @@ Options:
    -k/--mkdir <dir>                Create new directory
    -M/--move <source> <target>     Move file from remote <source> to remote <target> (e.g. --move file.txt somedir/file.txt)
    -s/--share <file|dir> [-p] [-q] Create a public share and shows the url. Optionally -p prompts for a password, -q returns only the share URL
-   -S/--share2 <file|dir> <password> <days to share> Create a public share with password and returns the url password and <sharing end date>
+   -S/--share2 <file|dir> <password> <days to share> Create a public share with password and returns the url, password, and <sharing end date>
    -L/--list-shares                List shares
+   -i/--info [dir]                 Get file size info for a share [dir]
    -U/--unshare <file|dir>         Delete a public share
    --configure                     Change connection configuration
    -h/--help                       Show this help
