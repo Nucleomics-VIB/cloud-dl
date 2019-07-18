@@ -257,6 +257,7 @@ usage(){
     echo "   -U/--unshare <file|dir>         Delete a public share"
     echo "   --configure                     Change connection configuration"
     echo "   -h/--help                       Show this help"
+    echo "# version: ${version}"
     echo
 }
 read_dom(){
