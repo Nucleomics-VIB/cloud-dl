@@ -9,6 +9,7 @@ Bash script to manage files on owncloud via webdav. cloud-dl allows you to list,
 * definition of the sharing date limit
 * new function for sharing automatisation via CLI (-S/--share2)
 * new function to get file & folder sizes in a share
+* mirror a local folder (structure and content, exclude hidden .files)
 
 ```
 Usage: cloud-dl <options> [file|dir]
@@ -16,6 +17,7 @@ Options:
    -l/--list [dir]                 List root directory or [dir]
    -d/--download <file>            Download <file> to current location
    -u/--upload <file> [dir]        Upload <file>. Optionally uploads <file> to [dir]
+   -m/--mirror <dir>               Mirror <dir> structure and content
    -D/--delete <file|dir>          Delete file or directory
    -k/--mkdir <dir>                Create new directory
    -M/--move <source> <target>     Move file from remote <source> to remote <target> (e.g. --move file.txt somedir/file.txt)
