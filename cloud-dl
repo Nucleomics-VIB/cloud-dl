@@ -63,6 +63,23 @@ upload(){
     fi
 }
 
+structure_upload(){
+    [ -z "$1" ] && echo "[!] Error. No base folder specified" && exit
+	src=$1
+	# create deepest nested folders on server
+	for path in $(find ${src} -depth -type d | awk -F / 'NF>=p; {p=NF}' ); do
+		echo "# creating ${path}"
+		_mkdir "${path}"
+	    [ $? -eq 0 ] || echo "[!] There was an error creating the folder structure '${path}'"
+	done
+    # populate the structure with files
+    for locpath in $(find ${src} -type f \( ! -iname ".*" \) ); do
+    	upload ${locpath} ${locpath%/*}
+	    [ $? -eq 0 ] || echo "[!] There was an error copying file '${locpath##*/}' to '${locpath%/*}'"
+    done
+    [ $? -eq 0 ] && echo "[+] Done" || echo "[!] There was an error copying local structure '$1'"
+}
+
 delete(){
     [ -z "$1" ] && echo "[!] Error. No file specified" && exit
     read -p "Are you sure you want to delete '$1'? [y/n]: " response
@@ -75,6 +92,7 @@ delete(){
 
 _mkdir(){
     [ -z "$1" ] && echo "[!] Error. No directory specified" && exit
+    dir=''
     dirs=$(echo "$1" | tr '/' ' ')
     for d in $dirs
     do
@@ -201,6 +219,9 @@ parse_args(){
             -u|--upload)    upload "$2" "$3"; exit
             shift
             ;;
+            -U|--upload2)    structure_upload "$2" "$3"; exit
+            shift
+            ;;
             -D|--delete)    delete "$2"
             shift
             ;;
@@ -245,6 +266,7 @@ usage(){
     echo "   -l/--list [dir]                 List root directory or [dir]"
     echo "   -d/--download <file>            Download <file> to current location"
     echo "   -u/--upload <file> [dir]        Upload <file>. Optionally uploads <file> to [dir]"
+    echo "   -U/--upload2 <dir>              Upload <dir> with all its content (mirror local folder structure)"
     echo "   -D/--delete <file|dir>          Delete file or directory"
     echo "   -k/--mkdir <dir>                Create new directory"
     echo "   -M/--move <source> <target>     Move file from remote <source> to remote <target> (e.g. --move file.txt somedir/file.txt)"
