@@ -2,10 +2,16 @@
 
 version="1.7.2"
 
-conf="$HOME/.cloudconf"
-
 # default expiration in X days
 default_expireInDays=7; # normal defaults is 7days which is a bit short for us
+
+# allow to specify a different .cloudconf via env
+# do with: export conf=<custom cloudconf file> before running cloud-dl
+if [ -z "$conf" ]; then
+	conf="$HOME/.cloudconf"
+else
+	conf="$conf"
+fi
 
 expire(){
 # OSX date differs from unix date
@@ -21,314 +27,318 @@ echo ${expireDate}
 }
 
 list(){
-    dir=$(echo $1 | sed 's/ /%20/g')
-    res=$(curl $extra_opts $options -X PROPFIND $dav_url/$dir 2>/dev/null)
-    [ $? -gt 0 ] && echo '[!] Error listing files' && exit
-    quota=$(parse_xml "$res" "d:quota-available-bytes" | uniq | sort | tail -n 1)
-    [ -z $trail ] || trail=${trail}/
-    if [ ! -z "$quota" ]; then
-        [ "$quota" -lt 0 ] && quota="Unlimited" || quota="$((quota/(1024*1024)))"MB
-        echo -en "\t\t\t[Quota available: $quota]\n"
-    fi
-    echo
-    l="$(parse_xml "$res" "d:href" | sed -e "s|/$trail$path||g" -e 's/%20/ /g')"
-    echo "$l" | grep --color=never -e "/$"
-    echo "$l" | grep --color=never -v -e "/$"
+	dir=$(echo $1 | sed 's/ /%20/g')
+	res=$(curl $extra_opts $options -X PROPFIND $dav_url/$dir 2>/dev/null)
+	[ $? -gt 0 ] && echo '[!] Error listing files' && exit
+	quota=$(parse_xml "$res" "d:quota-available-bytes" | uniq | sort | tail -n 1)
+	[ -z $trail ] || trail=${trail}/
+	if [ ! -z "$quota" ]; then
+		[ "$quota" -lt 0 ] && quota="Unlimited" || quota="$((quota/(1024*1024)))"MB
+		echo -en "\t\t\t[Quota available: $quota]\n"
+	fi
+	echo
+	l="$(parse_xml "$res" "d:href" | sed -e "s|/$trail$path||g" -e 's/%20/ /g')"
+	echo "$l" | grep --color=never -e "/$"
+	echo "$l" | grep --color=never -v -e "/$"
 }
 
 download(){
-    [ -z "$1" ] && echo "[!] Error. No file specified" && exit
-    fname=$(basename "$1")
-    pname=$(echo $1 | sed 's/ /%20/g')
-    if [ $(exists $pname) == 1 ];then
-        echo "[+] Downloading $fname..."
-        curl --progress-bar -o "$fname" $extra_opts $options -X GET $dav_url/$pname
-        [ $? -gt 0 ] && echo "[!] Error downloading the file" || echo "[+] Done"
-    else
-        echo "[!] File does not exist"
-    fi
+	[ -z "$1" ] && echo "[!] Error. No file specified" && exit
+	fname=$(basename "$1")
+	pname=$(echo $1 | sed 's/ /%20/g')
+	if [ $(exists $pname) == 1 ];then
+		echo "[+] Downloading $fname..."
+		curl --progress-bar -o "$fname" $extra_opts $options -X GET $dav_url/$pname
+		[ $? -gt 0 ] && echo "[!] Error downloading the file" || echo "[+] Done"
+	else
+		echo "[!] File does not exist"
+	fi
 }
 
 upload(){
-    [ -z "$1" ] && echo "[!] Error. No file specified" && exit
-    file=$(echo $1 | sed 's/ /%20/g')
-    target=$(echo $2 | sed 's/ /$20/g')
-    bname=$(basename "$file")
-    if [ -f "$1" ];then
-        echo "[+] Uploading '$1'..."
-        curl --progress-bar $extra_opts $options -T "$1" $dav_url/$target/$bname >/dev/null
-        [ $? -eq 0 ] && echo "[+] Done" || echo "[!] Error uploading the file. Verify target directory exists"
-    else
-        echo "[!] File '$1' not found"
-    fi
+	[ -z "$1" ] && echo "[!] Error. No file specified" && exit
+	file=$(echo $1 | sed 's/ /%20/g')
+	target=$(echo $2 | sed 's/ /$20/g')
+	bname=$(basename "$file")
+	if [ -f "$1" ];then
+		echo "[+] Uploading '$1'..."
+		curl --progress-bar $extra_opts $options -T "$1" $dav_url/$target/$bname >/dev/null
+		[ $? -eq 0 ] && echo "[+] Done" || echo "[!] Error uploading the file. Verify target directory exists"
+	else
+		echo "[!] File '$1' not found"
+	fi
 }
 
 mirror(){
-    [ -z "$1" ] && echo "[!] Error. No base folder specified" && exit
+	[ -z "$1" ] && echo "[!] Error. No base folder specified" && exit
 	src=$1
 	# create deepest nested folders on server
 	for path in $(find ${src} -depth -type d | awk -F / 'NF>=p; {p=NF}' ); do
 		echo "# creating ${path}"
 		_mkdir "${path}"
-	    [ $? -eq 0 ] || echo "[!] There was an error creating the folder structure '${path}'"
+		[ $? -eq 0 ] || echo "[!] There was an error creating the folder structure '${path}'"
 	done
-    # populate the structure with files
-    for locpath in $(find ${src} -type f \( ! -iname ".*" \) ); do
-    	upload ${locpath} ${locpath%/*}
-	    [ $? -eq 0 ] || echo "[!] There was an error copying file '${locpath##*/}' to '${locpath%/*}'"
-    done
-    [ $? -eq 0 ] && echo "[+] Done" || echo "[!] There was an error copying local structure '$1'"
+	# populate the structure with files
+	for locpath in $(find ${src} -type f \( ! -iname ".*" \) ); do
+		upload ${locpath} ${locpath%/*}
+		[ $? -eq 0 ] || echo "[!] There was an error copying file '${locpath##*/}' to '${locpath%/*}'"
+	done
+	[ $? -eq 0 ] && echo "[+] Done" || echo "[!] There was an error copying local structure '$1'"
 }
 
 delete(){
-    [ -z "$1" ] && echo "[!] Error. No file specified" && exit
-    read -p "Are you sure you want to delete '$1'? [y/n]: " response
-    [ "$response" != "y" ] && exit
-    file=$(echo $1 | sed 's/ /%20/g')
-    echo "[+] Deleting '$1'..."
-    curl $extra_opts $options -X DELETE $dav_url/$file 2>/dev/null
-    [ $? -eq 0 ] && echo "[+] Done" || echo "[!] There was an error deleting '$1'"
+	[ -z "$1" ] && echo "[!] Error. No file specified" && exit
+	read -p "Are you sure you want to delete '$1'? [y/n]: " response
+	[ "$response" != "y" ] && exit
+	file=$(echo $1 | sed 's/ /%20/g')
+	echo "[+] Deleting '$1'..."
+	curl $extra_opts $options -X DELETE $dav_url/$file 2>/dev/null
+	[ $? -eq 0 ] && echo "[+] Done" || echo "[!] There was an error deleting '$1'"
 }
 
 _mkdir(){
-    [ -z "$1" ] && echo "[!] Error. No directory specified" && exit
-    dir=''
-    dirs=$(echo "$1" | tr '/' ' ')
-    for d in $dirs
-    do
-        dir=${dir}/$(echo $d | sed 's/ /%20/g')
-        curl $extra_opts $options -X MKCOL $dav_url/$dir 2>/dev/null
-    done
-    [ $? -eq 0 ] && echo "[+] Done" || echo "[!] Unable to create directory"
+	[ -z "$1" ] && echo "[!] Error. No directory specified" && exit
+	dir=''
+	dirs=$(echo "$1" | tr '/' ' ')
+	for d in $dirs
+	do
+		dir=${dir}/$(echo $d | sed 's/ /%20/g')
+		curl $extra_opts $options -X MKCOL $dav_url/$dir 2>/dev/null
+	done
+	[ $? -eq 0 ] && echo "[+] Done" || echo "[!] Unable to create directory"
 }
 
 _mv(){
-    [ -z "$1" ] && echo "[!] Error. No file specified" && exit
-    [ -z "$2" ] && echo "[!] Error. You must specify destination" && exit
-    source=$(echo $1 | sed 's/ /%20/g')
-    target=$(echo $2 | sed 's/ /%20/g')
-    [ $(exists $1) == 0 ] && echo "[!] Error. File $1 does not exist" && exit
-    typ=$(exists $2)
-    if [ $typ == 2 ];then
-        echo "[!] Error. The destination has to include the file name"
-        exit
-    elif [ $typ == 1 ];then
-        read -p "'$2' already exists. Overwrite? [y/n]: " response
-        [ "$response" != "y" ] && exit
-    fi
-    curl $extra_opts $options -X MOVE $dav_url/$source --header "Destination: $dav_url/$target" 2>/dev/null
-    [ $? -eq 0 ] && echo "[+] Done" || echo "[!] Unable to move file"
+	[ -z "$1" ] && echo "[!] Error. No file specified" && exit
+	[ -z "$2" ] && echo "[!] Error. You must specify destination" && exit
+	source=$(echo $1 | sed 's/ /%20/g')
+	target=$(echo $2 | sed 's/ /%20/g')
+	[ $(exists $1) == 0 ] && echo "[!] Error. File $1 does not exist" && exit
+	typ=$(exists $2)
+	if [ $typ == 2 ];then
+		echo "[!] Error. The destination has to include the file name"
+		exit
+	elif [ $typ == 1 ];then
+		read -p "'$2' already exists. Overwrite? [y/n]: " response
+		[ "$response" != "y" ] && exit
+	fi
+	curl $extra_opts $options -X MOVE $dav_url/$source --header "Destination: $dav_url/$target" 2>/dev/null
+	[ $? -eq 0 ] && echo "[+] Done" || echo "[!] Unable to move file"
 }
 
 list_shares(){
-    res=$(curl $options $ocs_header $OCS_SHARE_API/shares 2>/dev/null)
-    [ $? -gt 0 ] && echo "[!] There was an error listing shares" && exit
-    type_a=();path_a=();url_al=()
-    [[ "$res" == *"<statuscode>404</statuscode>"* ]] && echo "[!] Unable to list shares" && exit
-    for t in $(parse_xml "$res" "item_type"); do type_a+=($t); done
-    for p in $(parse_xml "$res" "path" | sed 's/ /\*\*space\*\*/g'); do path_a+=($p); done
-    for url in $(parse_xml "$res" "url" | sed 's/\&amp;/\&/g'); do url_a+=($url); done
-    for((n=0;n<${#type_a[@]};++n)); do
-        [ "${type_a[$n]}" == "folder" ] && ftype='D' || ftype='F'
-        path=$(echo "${path_a[$n]}" | sed 's/\*\*space\*\*/ /g')
-        echo "[$ftype] $path => ${url_a[$n]}"
-    done
-    [[ "$n" == "0" ]] && echo "[*] No shares found"
+	res=$(curl $options $ocs_header $OCS_SHARE_API/shares 2>/dev/null)
+	[ $? -gt 0 ] && echo "[!] There was an error listing shares" && exit
+	type_a=();path_a=();url_al=()
+	[[ "$res" == *"<statuscode>404</statuscode>"* ]] && echo "[!] Unable to list shares" && exit
+	for t in $(parse_xml "$res" "item_type"); do type_a+=($t); done
+	for p in $(parse_xml "$res" "path" | sed 's/ /\*\*space\*\*/g'); do path_a+=($p); done
+	for url in $(parse_xml "$res" "url" | sed 's/\&amp;/\&/g'); do url_a+=($url); done
+	for((n=0;n<${#type_a[@]};++n)); do
+		[ "${type_a[$n]}" == "folder" ] && ftype='D' || ftype='F'
+		path=$(echo "${path_a[$n]}" | sed 's/\*\*space\*\*/ /g')
+		echo "[$ftype] $path => ${url_a[$n]}"
+	done
+	[[ "$n" == "0" ]] && echo "[*] No shares found"
 }
 
 info(){
-    [ -z "$1" ] && echo "[!] Error. No share folder specified" && exit
-    dir=$(echo $1 | sed 's/ /%20/g')
-    myconf='<?xml version="1.0" encoding="UTF-8"?> <d:propfind xmlns:d="DAV:"> <d:prop xmlns:oc="http://owncloud.org/ns"> <d:quota-used-bytes/> <d:getcontentlength/> <oc:size/> </d:prop> </d:propfind>'
-    res=$(curl $extra_opts $options -X PROPFIND -H "Depth: 2" $dav_url/$dir  --data "${myconf}" 2>/dev/null)
-    [ $? -gt 0 ] && echo '[!] Error listing files' && exit
-    [ -z $trail ] || trail=${trail}/
-    f="$(parse_xml "$res" "d:quota-used-bytes" | head -1)"
-    l="$(parse_xml "$res" "d:href" | sed -e "s|/$trail$path||g" -e 's/%20/ /g')"
-    s="$(parse_xml "$res" "oc:size")";#" | sed -e "s|/$trail$path||g" -e 's/%20/ /g')"
-    echo "# files and sizes (folder size: ${f})"
-    paste <(echo -e "$l\n") <(echo -e "$s") | column -s $'\t' -t
-    }
+	[ -z "$1" ] && echo "[!] Error. No share folder specified" && exit
+	dir=$(echo $1 | sed 's/ /%20/g')
+	myconf='<?xml version="1.0" encoding="UTF-8"?> <d:propfind xmlns:d="DAV:"> <d:prop xmlns:oc="http://owncloud.org/ns"> <d:quota-used-bytes/> <d:getcontentlength/> <oc:size/> </d:prop> </d:propfind>'
+	res=$(curl $extra_opts $options -X PROPFIND -H "Depth: 2" $dav_url/$dir	--data "${myconf}" 2>/dev/null)
+	[ $? -gt 0 ] && echo '[!] Error listing files' && exit
+	[ -z $trail ] || trail=${trail}/
+	f="$(parse_xml "$res" "d:quota-used-bytes" | head -1)"
+	l="$(parse_xml "$res" "d:href" | sed -e "s|/$trail$path||g" -e 's/%20/ /g')"
+	s="$(parse_xml "$res" "oc:size")";#" | sed -e "s|/$trail$path||g" -e 's/%20/ /g')"
+	echo "# files and sizes (folder size: ${f})"
+	paste <(echo -e "$l\n") <(echo -e "$s") | column -s $'\t' -t
+	}
 
 share(){
-  [ -z "$1" ] && echo "[!] Error. No file specified" && exit
-  shr_pwd=""
-  for arg in "$@"
-  do
-    [[ $arg == "-p" ]] && read -sp "Password: " pwd && shr_pwd="--data-urlencode password=$pwd" && echo
-    [[ $arg == "-q" ]] && quiet=1
-  done
-  res=$(curl $options $ocs_header --data-urlencode "path=$1" --data-urlencode "shareType=3" $shr_pwd $OCS_SHARE_API/shares 2>/dev/null )
-  [ $? -gt 0 ] && echo "[!] There was an error sharing '$1'" && exit
-  message=$(parse_xml "$res" "message")
-  status=$(parse_xml "$res" "statuscode")
-  [[ "$status" != "200" ]] && echo "[!] Unable to share '$1'. $message" && exit
-  url=$(parse_xml "$res" "url" | sed 's/\&amp;/\&/g')
-  url_line=""
-  [ -z $quiet ] && echo "[+] Done" && url_line="[+] URL: "
-  url_line="${url_line}${url}"
-  echo $url_line
+	[ -z "$1" ] && echo "[!] Error. No file specified" && exit
+	shr_pwd=""
+	for arg in "$@"
+	do
+	[[ $arg == "-p" ]] && read -sp "Password: " pwd && shr_pwd="--data-urlencode password=$pwd" && echo
+	[[ $arg == "-q" ]] && quiet=1
+	done
+	res=$(curl $options $ocs_header --data-urlencode "path=$1" --data-urlencode "shareType=3" $shr_pwd $OCS_SHARE_API/shares 2>/dev/null )
+	[ $? -gt 0 ] && echo "[!] There was an error sharing '$1'" && exit
+	message=$(parse_xml "$res" "message")
+	status=$(parse_xml "$res" "statuscode")
+	[[ "$status" != "200" ]] && echo "[!] Unable to share '$1'. $message" && exit
+	url=$(parse_xml "$res" "url" | sed 's/\&amp;/\&/g')
+	url_line=""
+	[ -z $quiet ] && echo "[+] Done" && url_line="[+] URL: "
+	url_line="${url_line}${url}"
+	echo $url_line
 }
 
 share2(){
-  [ -z "$1" ] && echo "[!] Error. No file specified" && exit
-  [ -z "$2" ] && echo "[!] Error. No password specified" && exit
-  expireInDays=${3:-"${default_expireInDays}"}
-  expireDate=$(expire "${expireInDays}")
-  shr_pwd="--data-urlencode password=$2"
-  res=$(curl $options $ocs_header --data-urlencode "path=$1" --data-urlencode "shareType=3" --data-urlencode expireDate="${expireDate}" --data-urlencode note="expires on ${expireDate}" $shr_pwd $OCS_SHARE_API/shares 2>/dev/null )
-  [ $? -gt 0 ] && echo "[!] There was an error sharing '$1'" && exit
-  message=$(parse_xml "$res" "message")
-  status=$(parse_xml "$res" "statuscode")
-  [[ "$status" != "200" ]] && echo "[!] Unable to share '$1'. $message" && exit
-  url=$(parse_xml "$res" "url" | sed 's/\&amp;/\&/g')
-  echo "$1 | $url | $2 | shared until ${expireDate}"
+	[ -z "$1" ] && echo "[!] Error. No file specified" && exit
+	[ -z "$2" ] && echo "[!] Error. No password specified" && exit
+	expireInDays=${3:-"${default_expireInDays}"}
+	expireDate=$(expire "${expireInDays}")
+	shr_pwd="--data-urlencode password=$2"
+	res=$(curl $options $ocs_header --data-urlencode "path=$1" --data-urlencode "shareType=3" --data-urlencode expireDate="${expireDate}" --data-urlencode note="expires on ${expireDate}" $shr_pwd $OCS_SHARE_API/shares 2>/dev/null )
+	[ $? -gt 0 ] && echo "[!] There was an error sharing '$1'" && exit
+	message=$(parse_xml "$res" "message")
+	status=$(parse_xml "$res" "statuscode")
+	[[ "$status" != "200" ]] && echo "[!] Unable to share '$1'. $message" && exit
+	url=$(parse_xml "$res" "url" | sed 's/\&amp;/\&/g')
+	echo "$1 | $url | $2 | shared until ${expireDate}"
 }
 
 unshare(){
-    [ -z "$1" ] && echo "[!] Error. No share specified" && exit
-    path=$(echo $1 | sed 's/ /%20/g')
-    res=$(curl $options $ocs_header $OCS_SHARE_API/shares?path=$path 2>/dev/null)
-    [ $? -gt 0 ] && echo "[!] There was an error getting id" && exit
-    [[ "$res" == *"<statuscode>404</statuscode>"* ]] && echo "[!] Unable to delete share '$1'. Wrong path" && exit
-    id=$(parse_xml "$res" "id")
-    curl $options $ocs_header -X DELETE "$OCS_SHARE_API/shares/$id" &>/dev/null
-    echo "[+] Done"
+	[ -z "$1" ] && echo "[!] Error. No share specified" && exit
+	path=$(echo $1 | sed 's/ /%20/g')
+	res=$(curl $options $ocs_header $OCS_SHARE_API/shares?path=$path 2>/dev/null)
+	[ $? -gt 0 ] && echo "[!] There was an error getting id" && exit
+	[[ "$res" == *"<statuscode>404</statuscode>"* ]] && echo "[!] Unable to delete share '$1'. Wrong path" && exit
+	id=$(parse_xml "$res" "id")
+	curl $options $ocs_header -X DELETE "$OCS_SHARE_API/shares/$id" &>/dev/null
+	echo "[+] Done"
 }
 
 exists(){ # if exists (1 = file, 2 = dir, 0 = doesn't exist)
-    res=$(list "$1" | grep -v "Quota available" | head -n2 | tail -n1)
-    if [ "$res" == "[!] Error listing files" ];then
-        echo 0
-    else
-        [ "${res: -1}" == "/" ] && echo 2 || echo 1
-    fi
+	res=$(list "$1" | grep -v "Quota available" | head -n2 | tail -n1)
+	if [ "$res" == "[!] Error listing files" ];then
+		echo 0
+	else
+		[ "${res: -1}" == "/" ] && echo 2 || echo 1
+	fi
 }
 
 parse_args(){
-    [ "$#" == "0" ] && usage && exit
-    while [[ $# > 0 ]];do
-        opt="$1"
-        case $opt in
-            -d|--download)  download "$2"
-            shift
-            ;;
-            -l|--list)      list "$2"
-            shift
-            ;;
-            -u|--upload)    upload "$2" "$3"; exit
-            shift
-            ;;
-            -m|--mirror)    mirror "$2"; exit
-            shift
-            ;;
-            -D|--delete)    delete "$2"
-            shift
-            ;;
-            -k|--mkdir)     _mkdir "$2"
-            shift
-            ;;
-            -M|--move)      _mv "$2" "$3"; exit
-            shift
-            ;;
-            -L|--list-shares)   list_shares
-            shift
-            ;;
-            -i|--info)      info "$2"
-            shift
-            ;;
-            -s|--share)     share "$2" "$3" "$4"; exit
-            shift
-            ;;
-            -S|--share2)     share2 "$2" "$3" "$4"; exit
-            shift
-            ;;
-            -U|--unshare)   unshare "$2"
-            shift
-            ;;
-            --configure)   create_conf
-            shift
-            ;;
-            -v|--version)   echo "Version: $version"
-            shift
-            ;;
-            -h|--help)      usage; exit
-            ;;
-            *)              echo -en "Unknown option '$opt'\n\n" && usage && exit
-        esac
-        shift
-        done
+	[ "$#" == "0" ] && usage && exit
+	while [[ $# > 0 ]];do
+		opt="$1"
+		case $opt in
+			-d|--download)	download "$2"
+			shift
+			;;
+			-l|--list)		list "$2"
+			shift
+			;;
+			-u|--upload)	upload "$2" "$3"; exit
+			shift
+			;;
+			-m|--mirror)	mirror "$2"; exit
+			shift
+			;;
+			-D|--delete)	delete "$2"
+			shift
+			;;
+			-k|--mkdir)	 _mkdir "$2"
+			shift
+			;;
+			-M|--move)		_mv "$2" "$3"; exit
+			shift
+			;;
+			-L|--list-shares)	 list_shares
+			shift
+			;;
+			-i|--info)		info "$2"
+			shift
+			;;
+			-s|--share)	 share "$2" "$3" "$4"; exit
+			shift
+			;;
+			-S|--share2)	 share2 "$2" "$3" "$4"; exit
+			shift
+			;;
+			-U|--unshare)	 unshare "$2"
+			shift
+			;;
+			--configure)	 create_conf
+			shift
+			;;
+			-c|--useconf)	export conf="$2"
+			shift
+			;;
+			-v|--version)	 echo "Version: $version"
+			shift
+			;;
+			-h|--help)		usage; exit
+			;;
+			*)				echo -en "Unknown option '$opt'\n\n" && usage && exit
+		esac
+		shift
+		done
 }
 
 usage(){
-    echo "Usage: $0 <options> [file|dir]"
-    echo "Options:"
-    echo "   -l/--list [dir]                 List root directory or [dir]"
-    echo "   -d/--download <file>            Download <file> to current location"
-    echo "   -u/--upload <file> [dir]        Upload <file>. Optionally uploads <file> to [dir]"
-    echo "   -m/--mirror <dir>               Mirror <dir> structure and content"
-    echo "   -D/--delete <file|dir>          Delete file or directory"
-    echo "   -k/--mkdir <dir>                Create new directory"
-    echo "   -M/--move <source> <target>     Move file from remote <source> to remote <target> (e.g. --move file.txt somedir/file.txt)"
-    echo "   -s/--share <file|dir> [-p] [-q] Create a public share and shows the url. Optionally -p prompts for a password, -q returns only the share URL"
-    echo "   -S/--share2 <file|dir> <password> <days to share> Create a public share with password and returns the url, password, and <sharing end date>"
-    echo "   -L/--list-shares                List shares"
-    echo "   -i/--info [dir]                 Get file size info for a share [dir]"
-    echo "   -U/--unshare <file|dir>         Delete a public share"
-    echo "   --configure                     Change connection configuration"
-    echo "   -h/--help                       Show this help"
-    echo "# version: ${version}"
-    echo
+	echo "Usage: $0 <options> [file|dir]"
+	echo "Options:"
+	echo "	 -l/--list [dir]                 List root directory or [dir]"
+	echo "	 -d/--download <file>            Download <file> to current location"
+	echo "	 -u/--upload <file> [dir]        Upload <file>. Optionally uploads <file> to [dir]"
+	echo "	 -m/--mirror <dir>               Mirror <dir> structure and content"
+	echo "	 -D/--delete <file|dir>          Delete file or directory"
+	echo "	 -k/--mkdir <dir>                Create new directory"
+	echo "	 -M/--move <source> <target>     Move file from remote <source> to remote <target> (e.g. --move file.txt somedir/file.txt)"
+	echo "	 -s/--share <file|dir> [-p] [-q] Create a public share and shows the url. Optionally -p prompts for a password, -q returns only the share URL"
+	echo "	 -S/--share2 <file|dir>          <password> <days to share> Create a public share with password and returns the url, password, and <sharing end date>"
+	echo "	 -L/--list-shares                List shares"
+	echo "	 -i/--info [dir]                 Get file size info for a share [dir]"
+	echo "	 -U/--unshare <file|dir>         Delete a public share"
+	echo "	 --configure                     Change connection configuration"
+	echo "	 -h/--help                       Show this help"
+	echo "# version: ${version}"
+	echo
 }
+
 read_dom(){
-    local IFS=\>
-    read -d \< ENTITY CONTENT
+	local IFS=\>
+	read -d \< ENTITY CONTENT
 }
 
 parse_xml(){
-
-   if [ "$platform" == "Linux" ]; then
-        echo "$1" | grep -oP "(?<=<$2>)[^<]+"
-    else
-        echo "$1" | while read_dom; do
-            [ "$ENTITY" == "$2" ] && echo $CONTENT
-        done
-    fi
+	 if [ "$platform" == "Linux" ]; then
+		echo "$1" | grep -oP "(?<=<$2>)[^<]+"
+	else
+		echo "$1" | while read_dom; do
+			[ "$ENTITY" == "$2" ] && echo $CONTENT
+		done
+	fi
 }
 
 create_conf(){
-    echo "[+] Creating new config file:"
-    read -p "  Username: " username
-    read -s -p "  Password: " password; echo
-    read -p "  Server (e.g. https://example.com/nextcloud): " host
-    [ "${host: -1}" == "/" ] && host=$(echo $host | rev | sed -e 's|/||' | rev)
-    [[ "$host" == *"https"* ]] && read -p "  Trust certificate [yes]: " trust_cert
-    trail=$(echo $host | cut -d '/' -f4)
-    [ -z $trust_cert ] && trust_cert="yes"; path="remote.php/webdav"
-    echo -en "username=$username\npassword=$password\nhost=$host\ntrust_cert=$trust_cert\ntrail=$trail\npath=$path\n" > $conf && chmod 600 $conf
-    setenv
-    testCon
+	echo "[+] Creating new config file:"
+	read -p "	Username: " username
+	read -s -p "	Password: " password; echo
+	read -p "	Server (e.g. https://example.com/nextcloud): " host
+	[ "${host: -1}" == "/" ] && host=$(echo $host | rev | sed -e 's|/||' | rev)
+	[[ "$host" == *"https"* ]] && read -p "	Trust certificate [yes]: " trust_cert
+	trail=$(echo $host | cut -d '/' -f4)
+	[ -z $trust_cert ] && trust_cert="yes"; path="remote.php/webdav"
+	echo -en "username=$username\npassword=$password\nhost=$host\ntrust_cert=$trust_cert\ntrail=$trail\npath=$path\n" > $conf && chmod 600 $conf
+	setenv
+	testCon
 }
 
 depCheck(){
-    for b in curl grep sed basename ;do
-        which $b &>/dev/null
-        [ $? != 0 ] && echo "[!] Some dependencies are missing ($b)" && exit
-    done
-    [ ! -f "$conf" ] && echo "[!] Config file not found" && create_conf && exit
+	for b in curl grep sed basename ;do
+		which $b &>/dev/null
+		[ $? != 0 ] && echo "[!] Some dependencies are missing ($b)" && exit
+	done
+	[ ! -f "$conf" ] && echo "[!] Config file not found" && create_conf && exit
 }
 
 testCon(){
 	res=$(curl $extra_opts $options -X PROPFIND $dav_url/$dir 2>/dev/null)
-    [ $? -gt 0 ] && echo "Unable to connect to server. Check your configuration" && exit
+	[ $? -gt 0 ] && echo "Unable to connect to server. Check your configuration" && exit
 }
 
 setenv(){
+	# export variables defined in the active conf file
 	for l in $(cat $conf); do [ "${l::1}" != "#" ] && export $l; done
 	[ "$trust_cert" == "yes" ] && trust="-k" || trust=''
 	options="$trust --user $username:$password"
-    extra_opts="-f" # We want -f switch for webdav, but not for OCS API, due to status codes
-    ocs_header="-H OCS-APIRequest:true"
+	extra_opts="-f" # We want -f switch for webdav, but not for OCS API, due to status codes
+	ocs_header="-H OCS-APIRequest:true"
 	oc_url=$host
 	dav_url=$oc_url/$path
 	OCS_SHARE_API="$oc_url/ocs/v2.php/apps/files_sharing/api/v1"
@@ -337,5 +347,4 @@ setenv(){
 depCheck
 platform=$(uname)
 setenv
-
 parse_args "$@"
