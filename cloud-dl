@@ -63,7 +63,7 @@ upload(){
     fi
 }
 
-structure_upload(){
+mirror(){
     [ -z "$1" ] && echo "[!] Error. No base folder specified" && exit
 	src=$1
 	# create deepest nested folders on server
@@ -219,7 +219,7 @@ parse_args(){
             -u|--upload)    upload "$2" "$3"; exit
             shift
             ;;
-            -U|--upload2)    structure_upload "$2" "$3"; exit
+            -m|--mirror)    mirror "$2"; exit
             shift
             ;;
             -D|--delete)    delete "$2"
@@ -266,7 +266,7 @@ usage(){
     echo "   -l/--list [dir]                 List root directory or [dir]"
     echo "   -d/--download <file>            Download <file> to current location"
     echo "   -u/--upload <file> [dir]        Upload <file>. Optionally uploads <file> to [dir]"
-    echo "   -U/--upload2 <dir>              Upload <dir> with all its content (mirror local folder structure)"
+    echo "   -m/--mirror <dir>               Mirror <dir> structure and content"
     echo "   -D/--delete <file|dir>          Delete file or directory"
     echo "   -k/--mkdir <dir>                Create new directory"
     echo "   -M/--move <source> <target>     Move file from remote <source> to remote <target> (e.g. --move file.txt somedir/file.txt)"
