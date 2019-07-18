@@ -5,12 +5,11 @@ version="1.7.2"
 conf="$HOME/.cloudconf"
 
 # default expiration in X days
-default_expireInDays=21
+default_expireInDays=7; # normal defaults is 7days which is a bit short for us
 
 expire(){
 # OSX date differs from unix date
-OS="$(uname)"
-case $OS in
+case ${platform} in
 	'Darwin') 
 	expireDate=$(date -v +"${1}"d "+%Y-%m-%d")
 	;;
@@ -165,7 +164,6 @@ share2(){
   status=$(parse_xml "$res" "statuscode")
   [[ "$status" != "200" ]] && echo "[!] Unable to share '$1'. $message" && exit
   url=$(parse_xml "$res" "url" | sed 's/\&amp;/\&/g')
-  url_line="${url_line}${url}"
   echo "$1 | $url | $2 | shared until ${expireDate}"
 }
 
