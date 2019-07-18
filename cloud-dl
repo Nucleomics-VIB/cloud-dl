@@ -1,6 +1,6 @@
 #!/bin/bash
 
-version="1.7"
+version="1.7.2"
 
 conf="$HOME/.cloudconf"
 
@@ -76,8 +76,12 @@ delete(){
 
 _mkdir(){
     [ -z "$1" ] && echo "[!] Error. No directory specified" && exit
-    file=$(echo $1 | sed 's/ /%20/g')
-    curl $extra_opts $options -X MKCOL $dav_url/$file 2>/dev/null
+    dirs=$(echo "$1" | tr '/' ' ')
+    for d in $dirs
+    do
+        dir=${dir}/$(echo $d | sed 's/ /%20/g')
+        curl $extra_opts $options -X MKCOL $dav_url/$dir 2>/dev/null
+    done
     [ $? -eq 0 ] && echo "[+] Done" || echo "[!] Unable to create directory"
 }
 
@@ -162,7 +166,7 @@ share2(){
   [[ "$status" != "200" ]] && echo "[!] Unable to share '$1'. $message" && exit
   url=$(parse_xml "$res" "url" | sed 's/\&amp;/\&/g')
   url_line="${url_line}${url}"
-  echo "$1 | $url_line | $2 | shared until ${expireDate}"
+  echo "$1 | $url | $2 | shared until ${expireDate}"
 }
 
 unshare(){
