@@ -310,6 +310,7 @@ create_conf(){
 	read -p "	Username: " username
 	read -s -p "	Password: " password; echo
 	read -p "	Server (e.g. https://example.com/nextcloud): " host
+	# remove training '/'
 	[ "${host: -1}" == "/" ] && host=$(echo $host | rev | sed -e 's|/||' | rev)
 	[[ "$host" == *"https"* ]] && read -p "	Trust certificate [yes]: " trust_cert
 	trail=$(echo $host | cut -d '/' -f4)
