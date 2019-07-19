@@ -143,15 +143,16 @@ list_shares(){
 }
 
 info(){
-	[ -z "$1" ] && echo "[!] Error. No share folder specified" && exit
+	[[ -z "$1" || "$1" == '/' ]] && echo "[!] Error. No share folder specified" && exit
+	depth=${2:-1}
 	dir=$(echo $1 | sed 's/ /%20/g')
 	myconf='<?xml version="1.0" encoding="UTF-8"?> <d:propfind xmlns:d="DAV:"> <d:prop xmlns:oc="http://owncloud.org/ns"> <d:quota-used-bytes/> <d:getcontentlength/> <oc:size/> </d:prop> </d:propfind>'
-	res=$(curl $extra_opts $options -X PROPFIND -H "Depth: 2" $dav_url/$dir	--data "${myconf}" 2>/dev/null)
+	res=$(curl $extra_opts $options -X PROPFIND -H "Depth: ${depth}" $dav_url/$dir --data "${myconf}" 2>/dev/null)
 	[ $? -gt 0 ] && echo '[!] Error listing files' && exit
 	[ -z $trail ] || trail=${trail}/
-	f="$(parse_xml "$res" "d:quota-used-bytes" | head -1)"
+	f="$(parse_xml "$res" "d:quota-used-bytes" | head -1 | numfmt --to=iec-i --format='%.3f')"
 	l="$(parse_xml "$res" "d:href" | sed -e "s|/$trail$path||g" -e 's/%20/ /g')"
-	s="$(parse_xml "$res" "oc:size")";#" | sed -e "s|/$trail$path||g" -e 's/%20/ /g')"
+	s="$(parse_xml "$res" "oc:size" | numfmt --to=iec-i --format='%.3f' | sed 's|-1.000|.|g')"; #" | sed -e "s|/$trail$path||g" -e 's/%20/ /g')"
 	echo "# files and sizes (folder size: ${f})"
 	paste <(echo -e "$l\n") <(echo -e "$s") | column -s $'\t' -t
 	}
@@ -240,7 +241,7 @@ parse_args(){
 			-L|--list-shares)	 list_shares
 			shift
 			;;
-			-i|--info)		info "$2"
+			-i|--info)		info "$2" "$3"; exit
 			shift
 			;;
 			-s|--share)	 share "$2" "$3" "$4"; exit
@@ -282,7 +283,7 @@ usage(){
 	echo "	 -s/--share <file|dir> [-p] [-q] Create a public share and shows the url. Optionally -p prompts for a password, -q returns only the share URL"
 	echo "	 -S/--share2 <file|dir>          <password> <days to share> Create a public share with password and returns the url, password, and <sharing end date>"
 	echo "	 -L/--list-shares                List shares"
-	echo "	 -i/--info [dir]                 Get file size info for a share [dir]"
+	echo "	 -i/--info [dir] [depth]         Get file size info for a share [dir] until [depth] (optional: default=1)"
 	echo "	 -U/--unshare <file|dir>         Delete a public share"
 	echo "	 --configure                     Change connection configuration"
 	echo "	 -h/--help                       Show this help"
@@ -321,7 +322,7 @@ create_conf(){
 }
 
 depCheck(){
-	for b in curl grep sed basename ;do
+	for b in curl grep sed basename column numfmt;do
 		which $b &>/dev/null
 		[ $? != 0 ] && echo "[!] Some dependencies are missing ($b)" && exit
 	done
