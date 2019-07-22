@@ -14,15 +14,16 @@ else
 fi
 
 expire(){
-# OSX date differs from unix date
-case ${platform} in
-	'Darwin') 
-	expireDate=$(date -v +"${1}"d "+%Y-%m-%d")
-	;;
-	'Linux') 
+# OSX date differs from gnubin date
+testdate=$(date --version | grep "GNU coreutils")
+
+if [[ $testdate == *"GNU coreutils"* ]]; then
 	expireDate=$(date "+%Y-%m-%d" -d "+${1} days")
-	;;
-	esac
+else
+	# we might have the apple date here
+	expireDate=$(date -v +"${1}"d "+%Y-%m-%d")
+fi
+
 echo ${expireDate}
 }
 
