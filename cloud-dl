@@ -2,6 +2,11 @@
 
 version="1.7.2"
 
+# requires:
+# GNU coreutils (basename, date, numfmt)
+# GNU (curl, grep, sed, awk)
+# util-linux (column)
+
 # default expiration in X days
 default_expireInDays=7; # normal defaults is 7days which is a bit short for us
 
@@ -324,7 +329,7 @@ create_conf(){
 }
 
 depCheck(){
-	for b in curl grep sed basename column numfmt;do
+	for b in date numfmt awk curl grep sed basename column ;do
 		which $b &>/dev/null
 		[ $? != 0 ] && echo "[!] Some dependencies are missing ($b)" && exit
 	done
