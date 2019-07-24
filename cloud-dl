@@ -356,4 +356,6 @@ setenv(){
 depCheck
 platform=$(uname)
 setenv
+# print date tag to use for sharing password
+echo "# date-tag: $(date +%s)"
 parse_args "$@"
