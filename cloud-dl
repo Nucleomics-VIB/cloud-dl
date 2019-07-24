@@ -159,7 +159,7 @@ info(){
 	[ -z $trail ] || trail=${trail}/
 	f="$(parse_xml "$res" "d:quota-used-bytes" | head -1 | numfmt --to=iec-i --format='%.3f')"
 	l="$(parse_xml "$res" "d:href" | sed -e "s|/$trail$path||g" -e 's/%20/ /g')"
-	s="$(parse_xml "$res" "oc:size" | numfmt --to=iec-i --format='%.1f' | sed 's|-1.000|.|g')"; #" | sed -e "s|/$trail$path||g" -e 's/%20/ /g')"
+	s="$(parse_xml "$res" "oc:size" | numfmt --to=iec-i --format='%.1f' | sed 's|-1.0*|.|g')"; #" | sed -e "s|/$trail$path||g" -e 's/%20/ /g')"
 	echo "# files and sizes (folder size: ${f})"
 	paste <(echo -e "$l\n") <(echo -e "$s") | column -s $'\t' -t
 	}
