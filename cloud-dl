@@ -1,6 +1,6 @@
 #!/bin/bash
 
-version="1.7.2"
+version="1.7.2.1"
 
 # requires:
 # GNU coreutils (basename, date, numfmt)
@@ -9,6 +9,7 @@ version="1.7.2"
 
 # default expiration in X days
 default_expireInDays=7; # normal defaults is 7days which is a bit short for us
+maildest="stephane.plaisance@gmail.com"
 
 # allow to specify a different .cloudconf via env
 # do with: export conf=<custom cloudconf file> before running cloud-dl
@@ -148,6 +149,17 @@ list_shares(){
 	[[ "$n" == "0" ]] && echo "[*] No shares found"
 }
 
+zap(){
+	# get raw data from the server at a given depth (allows spotting interesting tags for new tools or queries)
+	[[ -z "$1" ]] && echo "[!] Error. No share folder specified" && exit
+	#[[ -z "$1" || "$1" == '/' ]] && echo "[!] Error. No share folder specified" && exit
+	depth=${2:-1}
+	dir=$(echo $1 | sed 's/ /%20/g')
+	res=$(curl $extra_opts $options -X PROPFIND -H "Depth: ${depth}" $dav_url/$dir 2>/dev/null | xmllint --format -)
+	[ $? -gt 0 ] && echo '[!] Error listing files' && exit
+	echo "${res}\n"
+	}
+
 info(){
 	[[ -z "$1" ]] && echo "[!] Error. No share folder specified" && exit
 	#[[ -z "$1" || "$1" == '/' ]] && echo "[!] Error. No share folder specified" && exit
@@ -197,6 +209,11 @@ share2(){
 	[[ "$status" != "200" ]] && echo "[!] Unable to share '$1'. $message" && exit
 	url=$(parse_xml "$res" "url" | sed 's/\&amp;/\&/g')
 	echo "$1 | $url | $2 | shared until ${expireDate}"
+	# also send a mail to Nuclmeomics
+	if [[ "$(hostname)"=="gbw-l-m0172.local" ]]; then
+	echo "# sending mail"
+	echo "* $1 | $url | $2 | shared until ${expireDate}" | mail -s "# new share on NextCloud" "${maildest}"
+	fi
 }
 
 unshare(){
@@ -266,6 +283,9 @@ parse_args(){
 			-c|--useconf)	export conf="$2"
 			shift
 			;;
+			-z|--zap)		zap "$2" "$3"; exit
+			shift
+			;;
 			-v|--version)	 echo "Version: $version"
 			shift
 			;;
@@ -289,9 +309,10 @@ usage(){
 	echo "	 -M/--move <source> <target>     Move file from remote <source> to remote <target> (e.g. --move file.txt somedir/file.txt)"
 	echo "	 -s/--share <file|dir> [-p] [-q] Create a public share and shows the url. Optionally -p prompts for a password, -q returns only the share URL"
 	echo "	 -S/--share2 <file|dir>          <password> <days to share> Create a public share with password and returns the url, password, and <sharing end date>"
+	echo "	 -U/--unshare <file|dir>         Delete a public share"
 	echo "	 -L/--list-shares                List shares"
 	echo "	 -i/--info [dir] [depth]         Get file size info for a share [dir] until [depth] (optional: default=1)"
-	echo "	 -U/--unshare <file|dir>         Delete a public share"
+	echo "	 -z/--zap [dir] [depth]          Get raw content info for a share [dir] until [depth] (optional: default=1)"
 	echo "	 --configure                     Change connection configuration"
 	echo "	 -h/--help                       Show this help"
 	echo "# version: ${version}"
