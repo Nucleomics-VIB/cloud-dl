@@ -320,7 +320,7 @@ parse_args(){
 }
 
 usage(){
-	echo "Usage: $0 <options> [file|dir]"
+	echo "Usage: $(basename $0) <options> [file|dir]"
 	echo "Options:"
 	echo "	 -l/--list [dir]                 List root directory or [dir]"
 	echo "	 -d/--download <file>            Download <file> to current location"
@@ -330,7 +330,8 @@ usage(){
 	echo "	 -k/--mkdir <dir>                Create new directory"
 	echo "	 -M/--move <source> <target>     Move file from remote <source> to remote <target> (e.g. --move file.txt somedir/file.txt)"
 	echo "	 -s/--share <file|dir> [-p] [-q] Create a public share and shows the url. Optionally -p prompts for a password, -q returns only the share URL"
-	echo "	 -S/--share2 <file|dir>          <password> <days to share> Create a public share with password and returns the url, password, and <sharing end date>"
+	echo "	 -S/--share2 <file|dir> <password> <days to share> 
+	                                 Create a public share with password and returns '<url> | <password> | <sharing end date>‘"
 	echo "	 -U/--unshare <file|dir>         Delete a public share"
 	echo "	 -L/--list-shares                List shares"
 	echo "	 -i/--info [dir] [depth]         Get file size info for a share [dir] until [depth] (optional: default=1)"
