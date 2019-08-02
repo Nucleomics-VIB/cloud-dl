@@ -6,10 +6,12 @@ Bash script to manage files on owncloud via webdav. cloud-dl allows you to list,
 
 **Added in this fork:**
 
-* definition of the sharing date limit
+* definition of the default sharing date limit on top of the code (7)
+* mirror a local folder (structure and content, exclude hidden .files) (-m/--mirror)
 * new function for sharing automatisation via CLI (-S/--share2)
-* new function to get file & folder sizes in a share
-* mirror a local folder (structure and content, exclude hidden .files)
+* new function to get file & folder sizes in a share (-i/--info)
+* new function to get file, folder sizes, and date last write in a share (-I/--info2)
+* new dev function to get the full metadata content from the server (-z/--zap)
 
 ```
 Usage: cloud-dl <options> [file|dir]
