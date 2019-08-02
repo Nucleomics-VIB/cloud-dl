@@ -176,6 +176,25 @@ info(){
 	paste <(echo -e "$l\n") <(echo -e "$s") | column -s $'\t' -t
 	}
 
+info2(){
+	[[ -z "$1" ]] && echo "[!] Error. No share folder specified" && exit
+	#[[ -z "$1" || "$1" == '/' ]] && echo "[!] Error. No share folder specified" && exit
+	depth=${2:-1}
+	dir=$(echo $1 | sed 's/ /%20/g')
+	today=$(date +%s)
+	myconf='<?xml version="1.0" encoding="UTF-8"?> <d:propfind xmlns:d="DAV:"> <d:prop xmlns:oc="http://owncloud.org/ns"> <d:quota-used-bytes/> <d:getcontentlength/> <oc:size/> <d:getlastmodified/> </d:prop> </d:propfind>'
+	res=$(curl $extra_opts $options -X PROPFIND -H "Depth: ${depth}" $dav_url/$dir --data "${myconf}" 2>/dev/null)
+	[ $? -gt 0 ] && echo '[!] Error listing files' && exit
+	[ -z $trail ] || trail=${trail}/
+	f="$(parse_xml "$res" "d:quota-used-bytes" | head -1 | numfmt --to=iec-i --format='%.3f')"
+	l="$(parse_xml "$res" "d:href" | sed -e "s|/$trail$path||g" -e 's/%20/ /g')"
+	s="$(parse_xml "$res" "oc:size" | numfmt --to=iec-i --format='%.1f' | sed 's|-1.0*|.|g')";
+	m="$(parse_xml "$res" "d:getlastmodified")";
+	d="$(parse_xml "$res" "d:getlastmodified" | awk -v today="${today}" 'BEGIN{FIELDWIDTHS="4 3 4 5 4"}{"date -d\""$2FS$3FS$4"\" +%s" | getline mod; printf("%.0f\n", ((today - mod)/(3600*24))-1)}' )";
+	echo "# name, size, last-write, days (folder size: ${f})"
+	paste <(echo -e "$l\n") <(echo -e "$s") <(echo -e "$m") <(echo -e "$d") | column -s $'\t' -t
+	}
+	
 share(){
 	[ -z "$1" ] && echo "[!] Error. No file specified" && exit
 	shr_pwd=""
@@ -268,6 +287,9 @@ parse_args(){
 			-i|--info)		info "$2" "$3"; exit
 			shift
 			;;
+			-I|--info2)		info2 "$2" "$3"; exit
+			shift
+			;;
 			-s|--share)	 share "$2" "$3" "$4"; exit
 			shift
 			;;
@@ -312,6 +334,7 @@ usage(){
 	echo "	 -U/--unshare <file|dir>         Delete a public share"
 	echo "	 -L/--list-shares                List shares"
 	echo "	 -i/--info [dir] [depth]         Get file size info for a share [dir] until [depth] (optional: default=1)"
+	echo "	 -I/--info2 [dir] [depth]        Get file size and date info for a share [dir] until [depth] (optional: default=1)"
 	echo "	 -z/--zap [dir] [depth]          Get raw content info for a share [dir] until [depth] (optional: default=1)"
 	echo "	 --configure                     Change connection configuration"
 	echo "	 -h/--help                       Show this help"
