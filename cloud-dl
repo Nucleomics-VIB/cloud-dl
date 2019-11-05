@@ -1,16 +1,23 @@
 #!/bin/bash
 
-version="1.7.2.1"
+version="1.7.2.2"
 
 # requires:
 # GNU coreutils (basename, date, numfmt)
 # GNU (curl, grep, sed, awk)
 # util-linux (column)
 # mailit.sh to send mail (depends on sendmail installed and running)
+#   get it from https://github.com/Nucleomics-VIB/admin-tools/blob/master/mailit.sh
+
+
+############## editable settings ##################################################
 
 # default expiration in X days
 default_expireInDays=7; # normal defaults is 7days which is a bit short for us
+# send a mail with info to
 maildest="stephane.plaisance@gmail.com"
+
+############## do not edit below this line ########################################
 
 # allow to specify a different .cloudconf via env
 # do with: export conf=<custom cloudconf file> before running cloud-dl
@@ -229,8 +236,9 @@ share2(){
 	[[ "$status" != "200" ]] && echo "[!] Unable to share '$1'. $message" && exit
 	url=$(parse_xml "$res" "url" | sed 's/\&amp;/\&/g')
 	echo "$1 | $url | $2 | shared until ${expireDate}"
-	# also send a mail to Nuclmeomics
-	if [[ "$(hostname)" == "GXB02041" ]]; then
+	
+	# also send a mail to ${maildest} if mailit.sh is present
+	if [[ ! $( hash mailit.sh 2>/dev/null ) ]]; then
 	echo "# sending mail"
 	mailit.sh -f "$(whoami)"@"$(hostname)" -t "${maildest}" -s "# new $(hostname) share on NextCloud" -m "$(echo "* $1 | $url | $2 | shared until ${expireDate}")"
 	fi
