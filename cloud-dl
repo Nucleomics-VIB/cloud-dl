@@ -6,6 +6,7 @@ version="1.7.2.1"
 # GNU coreutils (basename, date, numfmt)
 # GNU (curl, grep, sed, awk)
 # util-linux (column)
+# mailit.sh to send mail (depends on sendmail installed and running)
 
 # default expiration in X days
 default_expireInDays=7; # normal defaults is 7days which is a bit short for us
@@ -229,9 +230,9 @@ share2(){
 	url=$(parse_xml "$res" "url" | sed 's/\&amp;/\&/g')
 	echo "$1 | $url | $2 | shared until ${expireDate}"
 	# also send a mail to Nuclmeomics
-	if [[ "$(hostname)"=="gbw-l-m0172.local" ]]; then
+	if [[ "$(hostname)" == "GXB02041" ]]; then
 	echo "# sending mail"
-	echo "* $1 | $url | $2 | shared until ${expireDate}" | mail -s "# new share on NextCloud" "${maildest}"
+	mailit.sh -f "$(whoami)"@"$(hostname)" -t "${maildest}" -s "# new $(hostname) share on NextCloud" -m "$(echo "* $1 | $url | $2 | shared until ${expireDate}")"
 	fi
 }
 
