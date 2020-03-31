@@ -238,7 +238,7 @@ share2(){
 	echo "$1 | $url | $2 | shared until ${expireDate}"
 	
 	# also send a mail to ${maildest} if mailit.sh is present
-	if [[ $( hash mailit.sh 2>/dev/null ) ]]; then
+	if [[ ! $( hash mailit.sh 2>/dev/null ) ]]; then
 	echo "# sending mail"
 	mailit.sh -f "$(whoami)"@"$(hostname)" -t "${maildest}" -s "# new $(hostname) share on NextCloud" -m "$(echo "* $1 | $url | $2 | shared until ${expireDate}")"
 	fi
