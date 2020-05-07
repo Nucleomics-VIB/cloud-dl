@@ -14,6 +14,7 @@ version="1.7.2.2"
 
 # default expiration in X days
 default_expireInDays=7; # normal defaults is 7days which is a bit short for us
+
 # send a mail with info to
 maildest="stephane.plaisance@gmail.com"
 
