@@ -273,7 +273,7 @@ parse_args(){
 			-d|--download)	download "$2"
 			shift
 			;;
-			-l|--list)		list "$2"
+			-l|--list)	list "$2"
 			shift
 			;;
 			-u|--upload)	upload "$2" "$3"; exit
@@ -285,45 +285,45 @@ parse_args(){
 			-D|--delete)	delete "$2"
 			shift
 			;;
-			-k|--mkdir)	 _mkdir "$2"
+			-k|--mkdir)	_mkdir "$2"
 			shift
 			;;
-			-M|--move)		_mv "$2" "$3"; exit
+			-M|--move)	_mv "$2" "$3"; exit
 			shift
 			;;
-			-L|--list-shares)	 list_shares
+			-L|--list-shares)	list_shares
 			shift
 			;;
-			-i|--info)		info "$2" "$3"; exit
+			-i|--info)	info "$2" "$3"; exit
 			shift
 			;;
-			-I|--info2)		info2 "$2" "$3"; exit
+			-I|--info2)	info2 "$2" "$3"; exit
 			shift
 			;;
-			-s|--share)	 share "$2" "$3" "$4"; exit
+			-s|--share)	share "$2" "$3" "$4"; exit
 			shift
 			;;
-			-S|--share2)	 share2 "$2" "$3" "$4"; exit
+			-S|--share2)	share2 "$2" "$3" "$4"; exit
 			shift
 			;;
-			-U|--unshare)	 unshare "$2"
+			-U|--unshare)	unshare "$2"
 			shift
 			;;
-			--configure)	 create_conf
+			--configure)	create_conf
 			shift
 			;;
 			-c|--useconf)	export conf="$2"
 			shift
 			;;
-			-z|--zap)		zap "$2" "$3"; exit
+			-z|--zap)	zap "$2" "$3"; exit
 			shift
 			;;
-			-v|--version)	 echo "Version: $version"
+			-v|--version)	echo "Version: $version"
 			shift
 			;;
-			-h|--help)		usage; exit
+			-h|--help)	usage; exit
 			;;
-			*)				echo -en "Unknown option '$opt'\n\n" && usage && exit
+			*)	echo -en "Unknown option '$opt'\n\n" && usage && exit
 		esac
 		shift
 		done
