@@ -7,7 +7,7 @@ version="1.7.2.2"
 # GNU (curl, grep, sed, awk)
 # util-linux (column)
 # mailit.sh to send mail (depends on sendmail installed and running)
-#   get it from https://github.com/Nucleomics-VIB/admin-tools/blob/master/mailit.sh
+#   get it from https://github.com/Nucleomics-VIB/admin-tools/blob/main/mailit.sh
 
 
 ############## editable settings ##################################################
