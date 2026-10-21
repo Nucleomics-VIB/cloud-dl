@@ -1,5 +1,8 @@
 # cloud-dl
 
+> **Archived.** This is an old version of the script and gets no more changes.
+> The maintained copy is [Nucleomics-VIB/cloud-dl-plus](https://github.com/Nucleomics-VIB/cloud-dl-plus).
+
 Please refer to the original GIT for acknowledgments!
 
 Bash script to manage files on owncloud via webdav. cloud-dl allows you to list, upload, download, delete, move, create and share files.
